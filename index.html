@@ -1,989 +1,623 @@
-<html><head>
-<meta charset="utf-8">
-<title>某某某新年快乐</title>
-
-<style>
-html,body{
-	margin:0px;
-	width:100%;
-	height:100%;
-	overflow:hidden;
-	background:#000;
-}
-</style>
-
-</head>
-<body class="body--ready">
-   <a href="https://mp.weixin.qq.com/s/oxLqXBcLCT8ij67DjkW2kw" class="hide_buttom" style="position: fixed;top: 10%;right: 10px;width: 35px;height: 35px;z-index: 999;background: #696969;border-radius: 50%;padding: 1.0px;text-align: center;color: #ddd;text-decoration: none;   clear: both; line-height: 35px; 	margin:auto;   font-size: 13px;">制作</a>
-  <a href="https://mp.weixin.qq.com/s/KA3nFLUB5W8f1BIyd_g0cg" class="hide_buttom" style="position: fixed;top: 4%;right: 10px;width: 35px;height: 35px;z-index: 998;background: #696969;border-radius: 50%;padding: 1.0px;text-align: center;color: #ddd;text-decoration: none;   clear: both; line-height: 35px; 	margin:auto;   font-size: 13px;">更多</a>
-          <a href="https://pan.quark.cn/s/3344d23e48a8" class="hide_buttom" style="position: fixed;top: 16%;right: 10px;width: 35px;height: 35px;z-index: 997;background: #696969;border-radius: 50%;padding: 1.0px;text-align: center;color: #ddd;text-decoration: none;   clear: both; line-height: 35px; 	margin:auto;   font-size: 13px;">源码</a>
-  <a href="https://shop1619956412.v.weidian.com/?userid=1619956412&amp;spider_token=2720" class="hide_buttom" style="position: fixed;top: 22%;right: 10px;width: 35px;height: 35px;z-index: 996;background: #696969;border-radius: 50%;padding: 1.0px;text-align: center;color: #ddd;text-decoration: none;   clear: both; line-height: 35px; 	margin:auto;   font-size: 13px;">红包</a>
-
-<canvas id="canvas" style="position:absolute;width:100%;height:100%;z-index:8888" width="1357" height="954"></canvas>
-<canvas style="position:absolute;width:100%;height:100%;z-index:9999" class="canvas" width="1357" height="954"></canvas>
-<div class="overlay">
-  <div class="tabs">
-    <div class="tabs-labels"><span class="tabs-label tabs-label--active">Commands</span><span class="tabs-label">Info</span><span class="tabs-label">Share</span></div>
-
-    <div class="tabs-panels">
-      <ul class="tabs-panel commands tabs-panel--active">
-      </ul>
-    </div>
-  </div>
-</div>
-<script>
-function initVars(){
-
-	pi=Math.PI;
-	ctx=canvas.getContext("2d");
-	canvas.width=canvas.clientWidth;
-	canvas.height=canvas.clientHeight;
-	cx=canvas.width/2;
-	cy=canvas.height/2;
-	playerZ=-25;
-	playerX=playerY=playerVX=playerVY=playerVZ=pitch=yaw=pitchV=yawV=0;
-	scale=600;
-	seedTimer=0;seedInterval=5,seedLife=100;gravity=.02;
-	seeds=new Array();
-	sparkPics=new Array();
-	s="https://cantelope.org/NYE/";
-	for(i=1;i<=10;++i){
-		sparkPic=new Image();
-		sparkPic.src=s+"spark"+i+".png";
-		sparkPics.push(sparkPic);
-	}
-	sparks=new Array();
-	pow1=new Audio(s+"pow1.ogg");
-	pow2=new Audio(s+"pow2.ogg");
-	pow3=new Audio(s+"pow3.ogg");
-	pow4=new Audio(s+"pow4.ogg");
-	frames = 0;
-}
-
-function rasterizePoint(x,y,z){
-
-	var p,d;
-	x-=playerX;
-	y-=playerY;
-	z-=playerZ;
-	p=Math.atan2(x,z);
-	d=Math.sqrt(x*x+z*z);
-	x=Math.sin(p-yaw)*d;
-	z=Math.cos(p-yaw)*d;
-	p=Math.atan2(y,z);
-	d=Math.sqrt(y*y+z*z);
-	y=Math.sin(p-pitch)*d;
-	z=Math.cos(p-pitch)*d;
-	var rx1=-1000,ry1=1,rx2=1000,ry2=1,rx3=0,ry3=0,rx4=x,ry4=z,uc=(ry4-ry3)*(rx2-rx1)-(rx4-rx3)*(ry2-ry1);
-	if(!uc) return {x:0,y:0,d:-1};
-	var ua=((rx4-rx3)*(ry1-ry3)-(ry4-ry3)*(rx1-rx3))/uc;
-	var ub=((rx2-rx1)*(ry1-ry3)-(ry2-ry1)*(rx1-rx3))/uc;
-	if(!z)z=.000000001;
-	if(ua>0&&ua<1&&ub>0&&ub<1){
-		return {
-			x:cx+(rx1+ua*(rx2-rx1))*scale,
-			y:cy+y/z*scale,
-			d:Math.sqrt(x*x+y*y+z*z)
-		};
-	}else{
-		return {
-			x:cx+(rx1+ua*(rx2-rx1))*scale,
-			y:cy+y/z*scale,
-			d:-1
-		};
-	}
-}
-
-function spawnSeed(){
-
-	seed=new Object();
-	seed.x=-50+Math.random()*100;
-	seed.y=25;
-	seed.z=-50+Math.random()*100;
-	seed.vx=.1-Math.random()*.2;
-	seed.vy=-1.5;//*(1+Math.random()/2);
-	seed.vz=.1-Math.random()*.2;
-	seed.born=frames;
-	seeds.push(seed);
-}
-
-function splode(x,y,z){
-
-	t=5+parseInt(Math.random()*150);
-	sparkV=1+Math.random()*2.5;
-	type=parseInt(Math.random()*3);
-	switch(type){
-		case 0:
-			pic1=parseInt(Math.random()*10);
-			break;
-		case 1:
-			pic1=parseInt(Math.random()*10);
-			do{ pic2=parseInt(Math.random()*10); }while(pic2==pic1);
-			break;
-		case 2:
-			pic1=parseInt(Math.random()*10);
-			do{ pic2=parseInt(Math.random()*10); }while(pic2==pic1);
-			do{ pic3=parseInt(Math.random()*10); }while(pic3==pic1 || pic3==pic2);
-			break;
-	}
-	for(m=1;m<t;++m){
-		spark=new Object();
-		spark.x=x; spark.y=y; spark.z=z;
-		p1=pi*2*Math.random();
-		p2=pi*Math.random();
-		v=sparkV*(1+Math.random()/6)
-		spark.vx=Math.sin(p1)*Math.sin(p2)*v;
-		spark.vz=Math.cos(p1)*Math.sin(p2)*v;
-		spark.vy=Math.cos(p2)*v;
-		switch(type){
-			case 0: spark.img=sparkPics[pic1]; break;
-			case 1:
-				spark.img=sparkPics[parseInt(Math.random()*2)?pic1:pic2];
-				break;
-			case 2:
-				switch(parseInt(Math.random()*3)){
-					case 0: spark.img=sparkPics[pic1]; break;
-					case 1: spark.img=sparkPics[pic2]; break;
-					case 2: spark.img=sparkPics[pic3]; break;
-				}
-				break;
-		}
-		spark.radius=25+Math.random()*50;
-		spark.alpha=1;
-		spark.trail=new Array();
-		sparks.push(spark);
-	}
-	switch(parseInt(Math.random()*4)){
-		case 0:	pow=new Audio(s+"pow1.ogg"); break;
-		case 1:	pow=new Audio(s+"pow2.ogg"); break;
-		case 2:	pow=new Audio(s+"pow3.ogg"); break;
-		case 3:	pow=new Audio(s+"pow4.ogg"); break;
-	}
-	d=Math.sqrt((x-playerX)*(x-playerX)+(y-playerY)*(y-playerY)+(z-playerZ)*(z-playerZ));
-	pow.volume=1.5/(1+d/10);
-	pow.play();
-}
-
-function doLogic(){
-
-	if(seedTimer<frames){
-		seedTimer=frames+seedInterval*Math.random()*10;
-		spawnSeed();
-	}
-	for(i=0;i<seeds.length;++i){
-		seeds[i].vy+=gravity;
-		seeds[i].x+=seeds[i].vx;
-		seeds[i].y+=seeds[i].vy;
-		seeds[i].z+=seeds[i].vz;
-		if(frames-seeds[i].born>seedLife){
-			splode(seeds[i].x,seeds[i].y,seeds[i].z);
-			seeds.splice(i,1);
-		}
-	}
-	for(i=0;i<sparks.length;++i){
-		if(sparks[i].alpha>0 && sparks[i].radius>5){
-			sparks[i].alpha-=.01;
-			sparks[i].radius/=1.02;
-			sparks[i].vy+=gravity;
-			point=new Object();
-			point.x=sparks[i].x;
-			point.y=sparks[i].y;
-			point.z=sparks[i].z;
-			if(sparks[i].trail.length){
-				x=sparks[i].trail[sparks[i].trail.length-1].x;
-				y=sparks[i].trail[sparks[i].trail.length-1].y;
-				z=sparks[i].trail[sparks[i].trail.length-1].z;
-				d=((point.x-x)*(point.x-x)+(point.y-y)*(point.y-y)+(point.z-z)*(point.z-z));
-				if(d>9){
-					sparks[i].trail.push(point);
-				}
-			}else{
-				sparks[i].trail.push(point);
-			}
-			if(sparks[i].trail.length>5)sparks[i].trail.splice(0,1);
-			sparks[i].x+=sparks[i].vx;
-			sparks[i].y+=sparks[i].vy;
-			sparks[i].z+=sparks[i].vz;
-			sparks[i].vx/=1.075;
-			sparks[i].vy/=1.075;
-			sparks[i].vz/=1.075;
-		}else{
-			sparks.splice(i,1);
-		}
-	}
-	p=Math.atan2(playerX,playerZ);
-	d=Math.sqrt(playerX*playerX+playerZ*playerZ);
-	d+=Math.sin(frames/80)/1.25;
-	t=Math.sin(frames/200)/40;
-	playerX=Math.sin(p+t)*d;
-	playerZ=Math.cos(p+t)*d;
-	yaw=pi+p+t;
-}
-
-function rgb(col){
-
-	var r = parseInt((.5+Math.sin(col)*.5)*16);
-	var g = parseInt((.5+Math.cos(col)*.5)*16);
-	var b = parseInt((.5-Math.sin(col)*.5)*16);
-	return "#"+r.toString(16)+g.toString(16)+b.toString(16);
-}
-
-function draw(){
-
-	ctx.clearRect(0,0,cx*2,cy*2);
-
-	ctx.fillStyle="#ff8";
-	for(i=-100;i<100;i+=3){
-		for(j=-100;j<100;j+=4){
-			x=i;z=j;y=25;
-			point=rasterizePoint(x,y,z);
-			if(point.d!=-1){
-				size=250/(1+point.d);
-				d = Math.sqrt(x * x + z * z);
-				a = 0.75 - Math.pow(d / 100, 6) * 0.75;
-				if(a>0){
-					ctx.globalAlpha = a;
-					ctx.fillRect(point.x-size/2,point.y-size/2,size,size);
-				}
-			}
-		}
-	}
-	ctx.globalAlpha=1;
-	for(i=0;i<seeds.length;++i){
-		point=rasterizePoint(seeds[i].x,seeds[i].y,seeds[i].z);
-		if(point.d!=-1){
-			size=200/(1+point.d);
-			ctx.fillRect(point.x-size/2,point.y-size/2,size,size);
-		}
-	}
-	point1=new Object();
-	for(i=0;i<sparks.length;++i){
-		point=rasterizePoint(sparks[i].x,sparks[i].y,sparks[i].z);
-		if(point.d!=-1){
-			size=sparks[i].radius*200/(1+point.d);
-			if(sparks[i].alpha<0)sparks[i].alpha=0;
-			if(sparks[i].trail.length){
-				point1.x=point.x;
-				point1.y=point.y;
-				switch(sparks[i].img){
-					case sparkPics[0]:ctx.strokeStyle="#f84";break;
-					case sparkPics[1]:ctx.strokeStyle="#84f";break;
-					case sparkPics[2]:ctx.strokeStyle="#8ff";break;
-					case sparkPics[3]:ctx.strokeStyle="#fff";break;
-					case sparkPics[4]:ctx.strokeStyle="#4f8";break;
-					case sparkPics[5]:ctx.strokeStyle="#f44";break;
-					case sparkPics[6]:ctx.strokeStyle="#f84";break;
-					case sparkPics[7]:ctx.strokeStyle="#84f";break;
-					case sparkPics[8]:ctx.strokeStyle="#fff";break;
-					case sparkPics[9]:ctx.strokeStyle="#44f";break;
-				}
-				for(j=sparks[i].trail.length-1;j>=0;--j){
-					point2=rasterizePoint(sparks[i].trail[j].x,sparks[i].trail[j].y,sparks[i].trail[j].z);
-					if(point2.d!=-1){
-						ctx.globalAlpha=j/sparks[i].trail.length*sparks[i].alpha/2;
-						ctx.beginPath();
-						ctx.moveTo(point1.x,point1.y);
-						ctx.lineWidth=1+sparks[i].radius*10/(sparks[i].trail.length-j)/(1+point2.d);
-						ctx.lineTo(point2.x,point2.y);
-						ctx.stroke();
-						point1.x=point2.x;
-						point1.y=point2.y;
-					}
-				}
-			}
-			ctx.globalAlpha=sparks[i].alpha;
-			ctx.drawImage(sparks[i].img,point.x-size/2,point.y-size/2,size,size);
-		}
-	}
-}
-
-function frame(){
-
-	if(frames>100000){
-		seedTimer=0;
-		frames=0;
-	}
-	frames++;
-	draw();
-	doLogic();
-	requestAnimationFrame(frame);
-}
-
-window.addEventListener("resize",()=>{
-	canvas.width=canvas.clientWidth;
-	canvas.height=canvas.clientHeight;
-	cx=canvas.width/2;
-	cy=canvas.height/2;
-});
-
-initVars();
-frame();
-
-
-
-var S = {
-  init: function () {
-    var action = window.location.href,
-      i = action.indexOf('?a=');
-
-    S.Drawing.init('.canvas');
-    document.body.classList.add('body--ready');
-
-    if (i !== -1) {
-      S.UI.simulate(decodeURI(action).substring(i + 3));
-    } else {
-      S.UI.simulate('|#countdown 5||2025|新年快乐!|祝你发大财|每天都要开开心心|日子滚烫|人间可爱|#rectangle|');
-    }
-
-    S.Drawing.loop(function () {
-      S.Shape.render();
-    });
-  }
-};
-
-let audio = document.querySelector('audio')
-setTimeout(() => {
-  audio.play()
-}, 5000);
-
-
-S.Drawing = (function () {
-  var canvas,
-    context,
-    renderFn
-  requestFrame = window.requestAnimationFrame ||
-    window.webkitRequestAnimationFrame ||
-    window.mozRequestAnimationFrame ||
-    window.oRequestAnimationFrame ||
-    window.msRequestAnimationFrame ||
-    function (callback) {
-      window.setTimeout(callback, 1000 / 60);
-    };
-
-  return {
-    init: function (el) {
-      canvas = document.querySelector(el);
-      context = canvas.getContext('2d');
-      this.adjustCanvas();
-
-      window.addEventListener('resize', function (e) {
-        S.Drawing.adjustCanvas();
-      });
-    },
-
-    loop: function (fn) {
-      renderFn = !renderFn ? fn : renderFn;
-      this.clearFrame();
-      renderFn();
-      requestFrame.call(window, this.loop.bind(this));
-    },
-
-    adjustCanvas: function () {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    },
-
-    clearFrame: function () {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-    },
-
-    getArea: function () {
-      return { w: canvas.width, h: canvas.height };
-    },
-
-    drawCircle: function (p, c) {
-      context.fillStyle = c.render();
-      context.beginPath();
-      context.arc(p.x, p.y, p.z, 0, 2 * Math.PI, true);
-      context.closePath();
-      context.fill();
-    }
-  }
-}());
-
-
-S.UI = (function () {
-  var canvas = document.querySelector('.canvas'),
-    interval,
-    isTouch = false,
-    currentAction,
-    resizeTimer,
-    time,
-    maxShapeSize = 30,
-    firstAction = true,
-    sequence = [],
-    cmd = '#';
-
-  function formatTime(date) {
-    var h = date.getHours(),
-      m = date.getMinutes(),
-      m = m < 10 ? '0' + m : m;
-    return h + ':' + m;
-  }
-
-  function getValue(value) {
-    return value && value.split(' ')[1];
-  }
-
-  function getAction(value) {
-    value = value && value.split(' ')[0];
-    return value && value[0] === cmd && value.substring(1);
-  }
-
-  function timedAction(fn, delay, max, reverse) {
-    clearInterval(interval);
-    currentAction = reverse ? max : 1;
-    fn(currentAction);
-
-    if (!max || (!reverse && currentAction < max) || (reverse && currentAction > 0)) {
-      interval = setInterval(function () {
-        currentAction = reverse ? currentAction - 1 : currentAction + 1;
-        fn(currentAction);
-
-        if ((!reverse && max && currentAction === max) || (reverse && currentAction === 0)) {
-          clearInterval(interval);
-        }
-      }, delay);
-    }
-  }
-
-  function reset(destroy) {
-    clearInterval(interval);
-    sequence = [];
-    time = null;
-    destroy && S.Shape.switchShape(S.ShapeBuilder.letter(''));
-  }
-
-  function performAction(value) {
-    var action,
-      value,
-      current;
-
-
-    sequence = typeof (value) === 'object' ? value : sequence.concat(value.split('|'));
-
-    timedAction(function (index) {
-      current = sequence.shift();
-      action = getAction(current);
-      value = getValue(current);
-
-      switch (action) {
-        case 'countdown':
-          value = parseInt(value) || 10;
-          value = value > 0 ? value : 10;
-
-          timedAction(function (index) {
-            if (index === 0) {
-              if (sequence.length === 0) {
-                S.Shape.switchShape(S.ShapeBuilder.letter(''));
-              } else {
-                performAction(sequence);
-              }
-            } else {
-              S.Shape.switchShape(S.ShapeBuilder.letter(index), true);
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>思科路由器网络实验</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#8B5CF6',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                        mono: ['Consolas', 'Monaco', 'monospace']
+                    },
+                }
             }
-          }, 1000, value, true);
-          break;
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .animate-pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .animate-blink {
+                animation: blink 1s step-end infinite;
+            }
+            .bg-grid {
+                background-image: linear-gradient(#e2e8f0 1px, transparent 1px),
+                                  linear-gradient(90deg, #e2e8f0 1px, transparent 1px);
+                background-size: 20px 20px;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .device-shadow {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+        }
 
-        case 'rectangle':
-          value = value && value.split('x');
-          value = (value && value.length === 2) ? value : [maxShapeSize, maxShapeSize / 2];
+        @keyframes blink {
+            from, to { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-dark">
+    <header class="bg-gradient-to-r from-primary to-accent text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold text-shadow flex items-center">
+                <i class="fa-solid fa-server mr-3"></i>
+                思科路由器网络实验
+            </h1>
+            <p class="text-lg mt-2 opacity-90 max-w-3xl">本实验展示了一个思科路由器连接多台电脑的网络拓扑结构，包含网络配置、路由表展示和连通性测试。</p>
+        </div>
+    </header>
 
-          S.Shape.switchShape(S.ShapeBuilder.rectangle(Math.min(maxShapeSize, parseInt(value[0])), Math.min(maxShapeSize, parseInt(value[1]))));
-          break;
+    <main class="container mx-auto px-4 py-8">
+        <!-- 拓扑图部分 -->
+        <section class="mb-12">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark mb-6 flex items-center">
+                <i class="fa-solid fa-sitemap text-primary mr-3"></i>
+                网络拓扑图
+            </h2>
+            
+            <div class="bg-white rounded-xl p-6 shadow-xl device-shadow relative overflow-hidden">
+                <div class="bg-grid absolute inset-0 opacity-20"></div>
+                
+                <!-- 网络拓扑 SVG -->
+                <svg viewBox="0 0 800 400" class="w-full h-auto relative z-10">
+                    <!-- 网络云 -->
+                    <ellipse cx="400" cy="100" rx="150" ry="40" fill="#E0F2FE" stroke="#3B82F6" stroke-width="2" />
+                    <path d="M250,100 Q300,50 350,100 Q400,50 450,100 Q500,50 550,100" fill="none" stroke="#3B82F6" stroke-width="2" />
+                    <text x="400" y="105" text-anchor="middle" fill="#1E40AF" font-size="16" font-weight="bold">Internet</text>
+                    
+                    <!-- 路由器 -->
+                    <rect x="350" y="180" width="100" height="60" rx="5" fill="#F3F4F6" stroke="#94A3B8" stroke-width="2" class="device-shadow" />
+                    <text x="400" y="215" text-anchor="middle" fill="#1E293B" font-size="14" font-weight="bold">Router</text>
+                    <text x="400" y="235" text-anchor="middle" fill="#64748B" font-size="12">192.168.1.1</text>
+                    
+                    <!-- 接口 -->
+                    <rect x="340" y="200" width="10" height="20" rx="2" fill="#94A3B8" />
+                    <rect x="440" y="200" width="10" height="20" rx="2" fill="#94A3B8" />
+                    <rect x="380" y="240" width="10" height="20" rx="2" fill="#94A3B8" />
+                    <rect x="410" y="240" width="10" height="20" rx="2" fill="#94A3B8" />
+                    
+                    <!-- 连接线路 -->
+                    <line x1="400" y1="140" x2="400" y2="180" stroke="#94A3B8" stroke-width="2" stroke-dasharray="5,3" />
+                    <line x1="345" y1="210" x2="200" y2="210" stroke="#94A3B8" stroke-width="2" />
+                    <line x1="385" y1="250" x2="385" y2="320" stroke="#94A3B8" stroke-width="2" />
+                    <line x1="415" y1="250" x2="415" y2="320" stroke="#94A3B8" stroke-width="2" />
+                    <line x1="445" y1="210" x2="590" y2="210" stroke="#94A3B8" stroke-width="2" />
+                    
+                    <!-- PC1 -->
+                    <rect x="150" y="180" width="100" height="60" rx="5" fill="#F3F4F6" stroke="#94A3B8" stroke-width="2" class="device-shadow" />
+                    <text x="200" y="215" text-anchor="middle" fill="#1E293B" font-size="14" font-weight="bold">PC1</text>
+                    <text x="200" y="235" text-anchor="middle" fill="#64748B" font-size="12">192.168.1.10</text>
+                    
+                    <!-- PC2 -->
+                    <rect x="335" y="330" width="100" height="60" rx="5" fill="#F3F4F6" stroke="#94A3B8" stroke-width="2" class="device-shadow" />
+                    <text x="385" y="365" text-anchor="middle" fill="#1E293B" font-size="14" font-weight="bold">PC2</text>
+                    <text x="385" y="385" text-anchor="middle" fill="#64748B" font-size="12">192.168.2.10</text>
+                    
+                    <!-- PC3 -->
+                    <rect x="465" y="330" width="100" height="60" rx="5" fill="#F3F4F6" stroke="#94A3B8" stroke-width="2" class="device-shadow" />
+                    <text x="515" y="365" text-anchor="middle" fill="#1E293B" font-size="14" font-weight="bold">PC3</text>
+                    <text x="515" y="385" text-anchor="middle" fill="#64748B" font-size="12">192.168.3.10</text>
+                    
+                    <!-- Server -->
+                    <rect x="540" y="180" width="100" height="60" rx="5" fill="#F3F4F6" stroke="#94A3B8" stroke-width="2" class="device-shadow" />
+                    <text x="590" y="215" text-anchor="middle" fill="#1E293B" font-size="14" font-weight="bold">Server</text>
+                    <text x="590" y="235" text-anchor="middle" fill="#64748B" font-size="12">192.168.4.10</text>
+                    
+                    <!-- 网络标签 -->
+                    <text x="200" y="170" text-anchor="middle" fill="#3B82F6" font-size="14" font-weight="bold">LAN1</text>
+                    <text x="385" y="320" text-anchor="middle" fill="#3B82F6" font-size="14" font-weight="bold">LAN2</text>
+                    <text x="515" y="320" text-anchor="middle" fill="#3B82F6" font-size="14" font-weight="bold">LAN3</text>
+                    <text x="590" y="170" text-anchor="middle" fill="#3B82F6" font-size="14" font-weight="bold">LAN4</text>
+                    
+                    <!-- 网络范围 -->
+                    <text x="200" y="150" text-anchor="middle" fill="#64748B" font-size="12">192.168.1.0/24</text>
+                    <text x="385" y="310" text-anchor="middle" fill="#64748B" font-size="12">192.168.2.0/24</text>
+                    <text x="515" y="310" text-anchor="middle" fill="#64748B" font-size="12">192.168.3.0/24</text>
+                    <text x="590" y="150" text-anchor="middle" fill="#64748B" font-size="12">192.168.4.0/24</text>
+                    
+                    <!-- 活动指示器 -->
+                    <circle id="link1-indicator" cx="272" cy="210" r="5" fill="#EF4444" />
+                    <circle id="link2-indicator" cx="385" cy="285" r="5" fill="#EF4444" />
+                    <circle id="link3-indicator" cx="415" cy="285" r="5" fill="#EF4444" />
+                    <circle id="link4-indicator" cx="517" cy="210" r="5" fill="#EF4444" />
+                </svg>
+                
+                <div class="absolute top-4 right-4 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium flex items-center">
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                    网络已就绪
+                </div>
+            </div>
+        </section>
 
-        case 'circle':
-          value = parseInt(value) || maxShapeSize;
-          value = Math.min(value, maxShapeSize);
-          S.Shape.switchShape(S.ShapeBuilder.circle(value));
-          break;
+        <!-- 配置命令部分 -->
+        <section class="mb-12">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark mb-6 flex items-center">
+                <i class="fa-solid fa-terminal text-primary mr-3"></i>
+                路由器配置命令
+            </h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-dark rounded-xl overflow-hidden shadow-xl">
+                    <div class="bg-gray-800 text-gray-300 px-4 py-2 flex justify-between items-center">
+                        <span class="font-mono">Router# configure terminal</span>
+                        <button id="copy-config" class="text-blue-400 hover:text-blue-300 transition-colors duration-200">
+                            <i class="fa-regular fa-copy mr-1"></i>复制
+                        </button>
+                    </div>
+                    <pre id="config-commands" class="font-mono text-green-400 p-4 overflow-x-auto max-h-[400px]">Router(config)# hostname R1
+R1(config)# enable secret class
 
-        case 'time':
-          var t = formatTime(new Date());
+! 配置接口
+R1(config)# interface FastEthernet0/0
+R1(config-if)# ip address 192.168.1.1 255.255.255.0
+R1(config-if)# no shutdown
+R1(config-if)# description LAN1 Interface
 
-          if (sequence.length > 0) {
-            S.Shape.switchShape(S.ShapeBuilder.letter(t));
-          } else {
-            timedAction(function () {
-              t = formatTime(new Date());
-              if (t !== time) {
-                time = t;
-                S.Shape.switchShape(S.ShapeBuilder.letter(time));
-              }
+R1(config)# interface FastEthernet0/1
+R1(config-if)# ip address 192.168.2.1 255.255.255.0
+R1(config-if)# no shutdown
+R1(config-if)# description LAN2 Interface
+
+R1(config)# interface FastEthernet1/0
+R1(config-if)# ip address 192.168.3.1 255.255.255.0
+R1(config-if)# no shutdown
+R1(config-if)# description LAN3 Interface
+
+R1(config)# interface FastEthernet1/1
+R1(config-if)# ip address 192.168.4.1 255.255.255.0
+R1(config-if)# no shutdown
+R1(config-if)# description LAN4 Interface
+
+! 配置路由
+R1(config)# ip route 0.0.0.0 0.0.0.0 192.168.1.254
+
+! 配置远程访问
+R1(config)# line vty 0 4
+R1(config-line)# password cisco
+R1(config-line)# login
+R1(config-line)# transport input all
+
+! 保存配置
+R1(config)# end
+R1# write memory</pre>
+                </div>
+                
+                <div class="bg-white rounded-xl p-6 shadow-xl">
+                    <h3 class="text-xl font-bold text-dark mb-4">配置说明</h3>
+                    <div class="space-y-4">
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
+                            <p class="font-medium text-blue-800">主机名设置</p>
+                            <p class="text-blue-700 mt-1">将路由器命名为R1，便于识别和管理。</p>
+                        </div>
+                        
+                        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-r">
+                            <p class="font-medium text-green-800">接口配置</p>
+                            <p class="text-green-700 mt-1">为路由器的四个接口分别分配IP地址，并启用这些接口。每个接口连接到不同的局域网。</p>
+                        </div>
+                        
+                        <div class="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r">
+                            <p class="font-medium text-purple-800">路由配置</p>
+                            <p class="text-purple-700 mt-1">设置默认路由，将所有未知目的地的流量转发到192.168.1.254，模拟连接到Internet。</p>
+                        </div>
+                        
+                        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r">
+                            <p class="font-medium text-yellow-800">远程访问</p>
+                            <p class="text-yellow-700 mt-1">配置VTY线路，允许通过Telnet或SSH远程管理路由器。</p>
+                        </div>
+                        
+                        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r">
+                            <p class="font-medium text-red-800">保存配置</p>
+                            <p class="text-red-700 mt-1">将配置保存到NVRAM，确保重启后配置不会丢失。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 路由表部分 -->
+        <section class="mb-12">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark mb-6 flex items-center">
+                <i class="fa-solid fa-table text-primary mr-3"></i>
+                路由器路由表
+            </h2>
+            
+            <div class="bg-white rounded-xl overflow-hidden shadow-xl">
+                <div class="bg-gray-100 text-gray-700 px-4 py-3 flex justify-between items-center">
+                    <h3 class="font-bold">R1# show ip route</h3>
+                    <div class="flex space-x-2">
+                        <button id="refresh-route" class="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-sm flex items-center transition-colors duration-200">
+                            <i class="fa-solid fa-refresh mr-1"></i>刷新
+                        </button>
+                        <button id="toggle-details" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm flex items-center transition-colors duration-200">
+                            <i class="fa-solid fa-angle-down mr-1"></i>详情
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">网络</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">子网掩码</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">下一跳</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">接口</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">管理距离</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">度量值</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap">192.168.1.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">255.255.255.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">-</td>
+                                <td class="px-6 py-4 whitespace-nowrap">FastEthernet0/0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap">192.168.2.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">255.255.255.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">-</td>
+                                <td class="px-6 py-4 whitespace-nowrap">FastEthernet0/1</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap">192.168.3.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">255.255.255.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">-</td>
+                                <td class="px-6 py-4 whitespace-nowrap">FastEthernet1/0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap">192.168.4.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">255.255.255.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">-</td>
+                                <td class="px-6 py-4 whitespace-nowrap">FastEthernet1/1</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors duration-150 bg-blue-50">
+                                <td class="px-6 py-4 whitespace-nowrap">0.0.0.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0.0.0.0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">192.168.1.254</td>
+                                <td class="px-6 py-4 whitespace-nowrap">FastEthernet0/0</td>
+                                <td class="px-6 py-4 whitespace-nowrap">1</td>
+                                <td class="px-6 py-4 whitespace-nowrap">0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="route-details" class="hidden bg-gray-50 border-t border-gray-200 p-4">
+                    <h4 class="font-medium text-gray-800 mb-2">路由表说明</h4>
+                    <ul class="list-disc list-inside text-gray-700 space-y-1">
+                        <li>前四条路由是直连路由（管理距离为0），表示路由器直接连接到这些网络。</li>
+                        <li>最后一条是默认路由（0.0.0.0/0），用于转发所有未知目的地的流量。</li>
+                        <li>管理距离表示路由来源的可信度，值越小越可信。</li>
+                        <li>度量值用于在多条路径中选择最优路径。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 连通性测试部分 -->
+        <section>
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark mb-6 flex items-center">
+                <i class="fa-solid fa-wifi text-primary mr-3"></i>
+                网络连通性测试
+            </h2>
+            
+            <div class="bg-white rounded-xl p-6 shadow-xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-dark mb-4">测试配置</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">源设备</label>
+                                <select id="source-device" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                                    <option value="pc1">PC1 (192.168.1.10)</option>
+                                    <option value="pc2">PC2 (192.168.2.10)</option>
+                                    <option value="pc3">PC3 (192.168.3.10)</option>
+                                    <option value="server">Server (192.168.4.10)</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">目标IP地址</label>
+                                <input type="text" id="target-ip" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary" placeholder="例如: 192.168.2.10" value="192.168.2.10">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">测试次数</label>
+                                <input type="number" id="ping-count" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary" min="1" max="10" value="4">
+                            </div>
+                            
+                            <button id="run-test" class="mt-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md shadow flex items-center transition-all duration-200 hover:shadow-lg">
+                                <i class="fa-solid fa-play mr-2"></i>
+                                运行测试
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-bold text-dark mb-4">测试结果</h3>
+                        
+                        <div class="bg-dark rounded-lg p-4 h-64 overflow-y-auto" id="test-results">
+                            <pre class="font-mono text-green-400">准备测试...
+请选择源设备和目标IP地址，然后点击"运行测试"按钮。</pre>
+                        </div>
+                        
+                        <div class="mt-4 grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-gray-600">连通率</span>
+                                    <span id="success-rate" class="text-lg font-bold text-green-600">--%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                    <div id="success-bar" class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-gray-600">平均延迟</span>
+                                    <span id="avg-latency" class="text-lg font-bold text-blue-600">-- ms</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                    <div id="latency-bar" class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-dark text-white mt-12 py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h3 class="text-xl font-bold">思科路由器网络实验</h3>
+                    <p class="text-gray-400 mt-1">模拟网络拓扑与配置</p>
+                </div>
+                
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors duration-200">
+                        <i class="fa-brands fa-github text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors duration-200">
+                        <i class="fa-brands fa-twitter text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors duration-200">
+                        <i class="fa-brands fa-linkedin text-xl"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-700 mt-6 pt-6 text-center text-gray-400">
+                <p>&copy; 2025 网络实验平台. 保留所有权利.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 复制配置命令
+        document.getElementById('copy-config').addEventListener('click', function() {
+            const text = document.getElementById('config-commands').textContent;
+            navigator.clipboard.writeText(text).then(function() {
+                const btn = document.getElementById('copy-config');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-regular fa-check mr-1"></i>已复制';
+                btn.classList.add('text-green-400');
+                btn.classList.remove('text-blue-400');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('text-green-400');
+                    btn.classList.add('text-blue-400');
+                }, 2000);
+            });
+        });
+        
+        // 切换路由表详情
+        document.getElementById('toggle-details').addEventListener('click', function() {
+            const details = document.getElementById('route-details');
+            const icon = this.querySelector('i');
+            
+            if (details.classList.contains('hidden')) {
+                details.classList.remove('hidden');
+                icon.classList.remove('fa-angle-down');
+                icon.classList.add('fa-angle-up');
+            } else {
+                details.classList.add('hidden');
+                icon.classList.remove('fa-angle-up');
+                icon.classList.add('fa-angle-down');
+            }
+        });
+        
+        // 刷新路由表
+        document.getElementById('refresh-route').addEventListener('click', function() {
+            const table = document.querySelector('table');
+            table.classList.add('opacity-50');
+            
+            // 模拟加载效果
+            setTimeout(() => {
+                table.classList.remove('opacity-50');
+                
+                // 随机改变一些值，模拟动态路由表
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const metricCell = row.querySelector('td:last-child');
+                    if (metricCell) {
+                        const currentMetric = parseInt(metricCell.textContent);
+                        if (Math.random() > 0.7) {
+                            metricCell.textContent = (currentMetric + Math.floor(Math.random() * 3)).toString();
+                        }
+                    }
+                });
+            }, 800);
+        });
+        
+        // 运行连通性测试
+        document.getElementById('run-test').addEventListener('click', function() {
+            const source = document.getElementById('source-device').value;
+            const target = document.getElementById('target-ip').value;
+            const count = parseInt(document.getElementById('ping-count').value);
+            
+            // 验证IP格式
+            const ipRegex = /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+            if (!ipRegex.test(target)) {
+                document.getElementById('test-results').innerHTML = `<pre class="font-mono text-red-400">错误: 无效的IP地址格式\n请输入有效的IPv4地址，例如: 192.168.1.1</pre>`;
+                return;
+            }
+            
+            // 获取源设备名称和IP
+            const sourceDevices = {
+                'pc1': { name: 'PC1', ip: '192.168.1.10' },
+                'pc2': { name: 'PC2', ip: '192.168.2.10' },
+                'pc3': { name: 'PC3', ip: '192.168.3.10' },
+                'server': { name: 'Server', ip: '192.168.4.10' }
+            };
+            
+            const sourceDevice = sourceDevices[source];
+            
+            // 清空结果并显示测试开始
+            const resultsElement = document.getElementById('test-results');
+            resultsElement.innerHTML = `<pre class="font-mono text-yellow-400">正在从 ${sourceDevice.name} (${sourceDevice.ip}) 向 ${target} 发送 ${count} 个ICMP数据包...</pre>`;
+            
+            // 禁用按钮
+            this.disabled = true;
+            this.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>测试中...';
+            
+            // 获取源网络和目标网络
+            const sourceNetwork = sourceDevice.ip.split('.').slice(0, 3).join('.');
+            const targetNetwork = target.split('.').slice(0, 3).join('.');
+            
+            // 模拟ping结果
+            let successes = 0;
+            let totalLatency = 0;
+            let output = `<pre class="font-mono text-green-400">正在从 ${sourceDevice.name} (${sourceDevice.ip}) 向 ${target} 发送 ${count} 个大小为 32 字节的ICMP数据包...\n</pre>`;
+            
+            // 模拟每次ping
+            const simulatePing = (index) => {
+                setTimeout(() => {
+                    // 同一网络总是成功
+                    const isSuccess = sourceNetwork === targetNetwork || Math.random() > 0.2;
+                    const latency = isSuccess ? Math.floor(Math.random() * 100) + 1 : null;
+                    
+                    if (isSuccess) {
+                        successes++;
+                        totalLatency += latency;
+                        output += `<pre class="font-mono text-green-400">来自 ${target} 的回复: 字节=32 时间=${latency}ms TTL=64</pre>`;
+                        
+                        // 闪烁对应的连接指示器
+                        const indicatorId = getIndicatorId(source, target);
+                        if (indicatorId) {
+                            const indicator = document.getElementById(indicatorId);
+                            indicator.classList.add('animate-pulse');
+                            setTimeout(() => indicator.classList.remove('animate-pulse'), 500);
+                        }
+                    } else {
+                        output += `<pre class="font-mono text-red-400">请求超时</pre>`;
+                    }
+                    
+                    resultsElement.innerHTML = output;
+                    
+                    if (index < count) {
+                        simulatePing(index + 1);
+                    } else {
+                        // 测试完成，显示统计信息
+                        const successRate = successes / count * 100;
+                        const avgLatency = successes > 0 ? totalLatency / successes : 0;
+                        
+                        output += `\n<pre class="font-mono text-yellow-400">${target} 的Ping统计信息:</pre>`;
+                        output += `<pre class="font-mono text-yellow-400">    数据包: 已发送 = ${count}, 已接收 = ${successes}, 丢失 = ${count - successes} (${(100 - successRate).toFixed(0)}% 丢失)</pre>`;
+                        
+                        if (successes > 0) {
+                            output += `<pre class="font-mono text-yellow-400">往返行程的估计时间(以毫秒为单位):</pre>`;
+                            output += `<pre class="font-mono text-yellow-400">    最短 = ${Math.min(...Array(successes).fill().map(() => Math.floor(Math.random() * 50) + 1))}ms, 最长 = ${Math.max(...Array(successes).fill().map(() => Math.floor(Math.random() * 100) + 50))}ms, 平均 = ${avgLatency.toFixed(0)}ms</pre>`;
+                        }
+                        
+                        resultsElement.innerHTML = output;
+                        
+                        // 更新统计UI
+                        document.getElementById('success-rate').textContent = `${successRate.toFixed(0)}%`;
+                        document.getElementById('success-bar').style.width = `${successRate}%`;
+                        document.getElementById('avg-latency').textContent = `${avgLatency.toFixed(0)} ms`;
+                        document.getElementById('latency-bar').style.width = `${Math.min(avgLatency, 100)}%`;
+                        
+                        // 恢复按钮状态
+                        this.disabled = false;
+                        this.innerHTML = '<i class="fa-solid fa-play mr-2"></i>运行测试';
+                    }
+                }, 800);
+            };
+            
+            simulatePing(1);
+        });
+        
+        // 根据源和目标确定要闪烁的指示器ID
+        function getIndicatorId(source, target) {
+            const targetNetwork = target.split('.')[1];
+            
+            switch (source) {
+                case 'pc1':
+                    return 'link1-indicator';
+                case 'pc2':
+                    return 'link2-indicator';
+                case 'pc3':
+                    return 'link3-indicator';
+                case 'server':
+                    return 'link4-indicator';
+                default:
+                    return null;
+            }
+        }
+        
+        // 初始动画
+        document.addEventListener('DOMContentLoaded', function() {
+            // 模拟网络连接建立
+            setTimeout(() => {
+                document.getElementById('link1-indicator').style.fill = '#10B981';
             }, 1000);
-          }
-          break;
-
-        default:
-          S.Shape.switchShape(S.ShapeBuilder.letter(current[0] === cmd ? 'What?' : current));
-      }
-    }, 2000, sequence.length);
-  }
-
-  function checkInputWidth(e) {
-    if (input.value.length > 18) {
-      ui.classList.add('ui--wide');
-    } else {
-      ui.classList.remove('ui--wide');
-    }
-
-    if (firstAction && input.value.length > 0) {
-      ui.classList.add('ui--enter');
-    } else {
-      ui.classList.remove('ui--enter');
-    }
-  }
-
-  function bindEvents() {
-    document.body.addEventListener('keydown', function (e) {
-      input.focus();
-
-      if (e.keyCode === 13) {
-        firstAction = false;
-        reset();
-        performAction(input.value);
-      }
-    });
-
-
-    canvas.addEventListener('click', function (e) {
-      overlay.classList.remove('overlay--visible');
-    });
-  }
-
-  function init() {
-    bindEvents();
-    isTouch && document.body.classList.add('touch');
-  }
-
-  init();
-
-  return {
-    simulate: function (action) {
-      performAction(action);
-    }
-  }
-}());
-
-
-S.UI.Tabs = (function () {
-  var tabs = document.querySelector('.tabs'),
-    labels = document.querySelector('.tabs-labels'),
-    triggers = document.querySelectorAll('.tabs-label'),
-    panels = document.querySelectorAll('.tabs-panel');
-
-  function activate(i) {
-    triggers[i].classList.add('tabs-label--active');
-    panels[i].classList.add('tabs-panel--active');
-  }
-
-  function bindEvents() {
-    labels.addEventListener('click', function (e) {
-      var el = e.target,
-        index;
-
-      if (el.classList.contains('tabs-label')) {
-        for (var t = 0; t < triggers.length; t++) {
-          triggers[t].classList.remove('tabs-label--active');
-          panels[t].classList.remove('tabs-panel--active');
-
-          if (el === triggers[t]) {
-            index = t;
-          }
-        }
-
-        activate(index);
-      }
-    });
-  }
-
-  function init() {
-    activate(0);
-    bindEvents();
-  }
-
-  // Init
-  init();
-}());
-
-
-S.Point = function (args) {
-  this.x = args.x;
-  this.y = args.y;
-  this.z = args.z;
-  this.a = args.a;
-  this.h = args.h;
-};
-
-
-S.Color = function (r, g, b, a) {
-  this.r = r;
-  this.g = g;
-  this.b = b;
-  this.a = a;
-};
-
-S.Color.prototype = {
-  render: function () {
-    return 'rgba(' + this.r + ',' + + this.g + ',' + this.b + ',' + this.a + ')';
-  }
-};
-
-
-S.Dot = function (x, y) {
-  this.p = new S.Point({
-    x: x,
-    y: y,
-    z: 5,
-    a: 1,
-    h: 0
-  });
-
-  this.e = 0.07;
-  this.s = true;
-
-  this.c = new S.Color(255, 255, 255, this.p.a);
-
-  this.t = this.clone();
-  this.q = [];
-};
-
-S.Dot.prototype = {
-  clone: function () {
-    return new S.Point({
-      x: this.x,
-      y: this.y,
-      z: this.z,
-      a: this.a,
-      h: this.h
-    });
-  },
-
-  _draw: function () {
-    this.c.a = this.p.a;
-    S.Drawing.drawCircle(this.p, this.c);
-  },
-
-  _moveTowards: function (n) {
-    var details = this.distanceTo(n, true),
-      dx = details[0],
-      dy = details[1],
-      d = details[2],
-      e = this.e * d;
-
-    if (this.p.h === -1) {
-      this.p.x = n.x;
-      this.p.y = n.y;
-      return true;
-    }
-
-    if (d > 1) {
-      this.p.x -= ((dx / d) * e);
-      this.p.y -= ((dy / d) * e);
-    } else {
-      if (this.p.h > 0) {
-        this.p.h--;
-      } else {
-        return true;
-      }
-    }
-
-    return false;
-  },
-
-  _update: function () {
-    if (this._moveTowards(this.t)) {
-      var p = this.q.shift();
-
-      if (p) {
-        this.t.x = p.x || this.p.x;
-        this.t.y = p.y || this.p.y;
-        this.t.z = p.z || this.p.z;
-        this.t.a = p.a || this.p.a;
-        this.p.h = p.h || 0;
-      } else {
-        if (this.s) {
-          this.p.x -= Math.sin(Math.random() * 3.142);
-          this.p.y -= Math.sin(Math.random() * 3.142);
-        } else {
-          this.move(new S.Point({
-            x: this.p.x + (Math.random() * 50) - 25,
-            y: this.p.y + (Math.random() * 50) - 25,
-          }));
-        }
-      }
-    }
-
-    d = this.p.a - this.t.a;
-    this.p.a = Math.max(0.1, this.p.a - (d * 0.05));
-    d = this.p.z - this.t.z;
-    this.p.z = Math.max(1, this.p.z - (d * 0.05));
-  },
-
-  distanceTo: function (n, details) {
-    var dx = this.p.x - n.x,
-      dy = this.p.y - n.y,
-      d = Math.sqrt(dx * dx + dy * dy);
-
-    return details ? [dx, dy, d] : d;
-  },
-
-  move: function (p, avoidStatic) {
-    if (!avoidStatic || (avoidStatic && this.distanceTo(p) > 1)) {
-      this.q.push(p);
-    }
-  },
-
-  render: function () {
-    this._update();
-    this._draw();
-  }
-}
-
-
-S.ShapeBuilder = (function () {
-  var gap = 13,
-    shapeCanvas = document.createElement('canvas'),
-    shapeContext = shapeCanvas.getContext('2d'),
-    fontSize = 500,
-    fontFamily = 'Avenir, Helvetica Neue, Helvetica, Arial, sans-serif';
-
-  function fit() {
-    shapeCanvas.width = Math.floor(window.innerWidth / gap) * gap;
-    shapeCanvas.height = Math.floor(window.innerHeight / gap) * gap;
-    shapeContext.fillStyle = 'red';
-    shapeContext.textBaseline = 'middle';
-    shapeContext.textAlign = 'center';
-  }
-
-  function processCanvas() {
-    var pixels = shapeContext.getImageData(0, 0, shapeCanvas.width, shapeCanvas.height).data;
-    dots = [],
-      pixels,
-      x = 0,
-      y = 0,
-      fx = shapeCanvas.width,
-      fy = shapeCanvas.height,
-      w = 0,
-      h = 0;
-
-    for (var p = 0; p < pixels.length; p += (4 * gap)) {
-      if (pixels[p + 3] > 0) {
-        dots.push(new S.Point({
-          x: x,
-          y: y
-        }));
-
-        w = x > w ? x : w;
-        h = y > h ? y : h;
-        fx = x < fx ? x : fx;
-        fy = y < fy ? y : fy;
-      }
-
-      x += gap;
-
-      if (x >= shapeCanvas.width) {
-        x = 0;
-        y += gap;
-        p += gap * 4 * shapeCanvas.width;
-      }
-    }
-
-    return { dots: dots, w: w + fx, h: h + fy };
-  }
-
-  function setFontSize(s) {
-    shapeContext.font = 'bold ' + s + 'px ' + fontFamily;
-  }
-
-  function isNumber(n) {
-    return !isNaN(parseFloat(n)) && isFinite(n);
-  }
-
-  function init() {
-    fit();
-    window.addEventListener('resize', fit);
-  }
-
-  // Init
-  init();
-
-  return {
-    imageFile: function (url, callback) {
-      var image = new Image(),
-        a = S.Drawing.getArea();
-
-      image.onload = function () {
-        shapeContext.clearRect(0, 0, shapeCanvas.width, shapeCanvas.height);
-        shapeContext.drawImage(this, 0, 0, a.h * 0.6, a.h * 0.6);
-        callback(processCanvas());
-      };
-
-      image.onerror = function () {
-        callback(S.ShapeBuilder.letter('What?'));
-      }
-
-      image.src = url;
-    },
-
-    circle: function (d) {
-      var r = Math.max(0, d) / 2;
-      shapeContext.clearRect(0, 0, shapeCanvas.width, shapeCanvas.height);
-      shapeContext.beginPath();
-      shapeContext.arc(r * gap, r * gap, r * gap, 0, 2 * Math.PI, false);
-      shapeContext.fill();
-      shapeContext.closePath();
-
-      return processCanvas();
-    },
-
-    letter: function (l) {
-      var s = 0;
-
-      setFontSize(fontSize);
-      s = Math.min(fontSize,
-        (shapeCanvas.width / shapeContext.measureText(l).width) * 0.8 * fontSize,
-        (shapeCanvas.height / fontSize) * (isNumber(l) ? 1 : 0.45) * fontSize);
-      setFontSize(s);
-
-      shapeContext.clearRect(0, 0, shapeCanvas.width, shapeCanvas.height);
-      shapeContext.fillText(l, shapeCanvas.width / 2, shapeCanvas.height / 2);
-
-      return processCanvas();
-    },
-
-    rectangle: function (w, h) {
-      var dots = [],
-        width = gap * w,
-        height = gap * h;
-
-      for (var y = 0; y < height; y += gap) {
-        for (var x = 0; x < width; x += gap) {
-          dots.push(new S.Point({
-            x: x,
-            y: y,
-          }));
-        }
-      }
-
-      return { dots: dots, w: width, h: height };
-    }
-  };
-}());
-
-
-S.Shape = (function () {
-  var dots = [],
-    width = 0,
-    height = 0,
-    cx = 0,
-    cy = 0;
-
-  function compensate() {
-    var a = S.Drawing.getArea();
-
-    cx = a.w / 2 - width / 2;
-    cy = a.h / 2 - height / 2;
-  }
-
-  return {
-    shuffleIdle: function () {
-      var a = S.Drawing.getArea();
-
-      for (var d = 0; d < dots.length; d++) {
-        if (!dots[d].s) {
-          dots[d].move({
-            x: Math.random() * a.w,
-            y: Math.random() * a.h
-          });
-        }
-      }
-    },
-
-    switchShape: function (n, fast) {
-      var size,
-        a = S.Drawing.getArea();
-
-      width = n.w;
-      height = n.h;
-
-      compensate();
-
-      if (n.dots.length > dots.length) {
-        size = n.dots.length - dots.length;
-        for (var d = 1; d <= size; d++) {
-          dots.push(new S.Dot(a.w / 2, a.h / 2));
-        }
-      }
-
-      var d = 0,
-        i = 0;
-
-      while (n.dots.length > 0) {
-        i = Math.floor(Math.random() * n.dots.length);
-        dots[d].e = fast ? 0.25 : (dots[d].s ? 0.14 : 0.11);
-
-        if (dots[d].s) {
-          dots[d].move(new S.Point({
-            z: Math.random() * 20 + 10,
-            a: Math.random(),
-            h: 18
-          }));
-        } else {
-          dots[d].move(new S.Point({
-            z: Math.random() * 5 + 5,
-            h: fast ? 18 : 30
-          }));
-        }
-
-        dots[d].s = true;
-        dots[d].move(new S.Point({
-          x: n.dots[i].x + cx,
-          y: n.dots[i].y + cy,
-          a: 1,
-          z: 5,
-          h: 0
-        }));
-
-        n.dots = n.dots.slice(0, i).concat(n.dots.slice(i + 1));
-        d++;
-      }
-
-      for (var i = d; i < dots.length; i++) {
-        if (dots[i].s) {
-          dots[i].move(new S.Point({
-            z: Math.random() * 20 + 10,
-            a: Math.random(),
-            h: 20
-          }));
-
-          dots[i].s = false;
-          dots[i].e = 0.04;
-          dots[i].move(new S.Point({
-            x: Math.random() * a.w,
-            y: Math.random() * a.h,
-            a: 0.3, //.4
-            z: Math.random() * 4,
-            h: 0
-          }));
-        }
-      }
-    },
-
-    render: function () {
-      for (var d = 0; d < dots.length; d++) {
-        dots[d].render();
-      }
-    }
-  }
-}());
-
-
-S.init();
-
-</script>
-<script src="js/index.js"></script>
-
-
-
-</body></html>
+            
+            setTimeout(() => {
+                document.getElementById('link2-indicator').style.fill = '#10B981';
+            }, 1500);
+            
+            setTimeout(() => {
+                document.getElementById('link3-indicator').style.fill = '#10B981';
+            }, 2000);
+            
+            setTimeout(() => {
+                document.getElementById('link4-indicator').style.fill = '#10B981';
+            }, 2500);
+        });
+    </script>
+</body>
+</html>
+    
