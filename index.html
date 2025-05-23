@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机数生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: #3b82f6;
+        }
+
+        .result {
+            text-align: center;
+            margin: 24px 0;
+        }
+
+        .result-value {
+            font-size: 72px;
+            font-weight: bold;
+            color: #333;
+            min-height: 84px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+        }
+
+        .result-value.animate {
+            transform: scale(1.2);
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        #generateBtn {
+            background-color: #22c55e;
+            color: white;
+        }
+
+        #generateBtn:hover {
+            background-color: #16a34a;
+        }
+
+        #resetBtn {
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+
+        #resetBtn:hover {
+            background-color: #e5e7eb;
+        }
+
+        .history {
+            margin-top: 24px;
+        }
+
+        .history-title {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .history-items {
+            font-size: 14px;
+            color: #666;
+            min-height: 20px;
+        }
+
+        .error {
+            color: #ef4444;
+            margin-top: 8px;
+            font-size: 12px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        footer {
+            margin-top: 24px;
+            color: #888;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>随机数生成器</h1>
+        
+        <div class="input-group">
+            <label for="maxNumber">输入最大值</label>
+            <input type="number" id="maxNumber" min="2" placeholder="请输入大于1的整数" required>
+            <div class="error" id="errorMsg">请输入有效的数字（大于1）</div>
+        </div>
+        
+        <div class="result">
+            <div class="result-value" id="resultDisplay">?</div>
+        </div>
+        
+        <div class="controls">
+            <button id="generateBtn">生成随机数</button>
+            <button id="resetBtn">重置</button>
+        </div>
+        
+        <div class="history">
+            <div class="history-title">历史记录:</div>
+            <div class="history-items" id="historyDisplay"></div>
+        </div>
+    </div>
+    
+    <footer>
+        © 2025 随机数生成器
+    </footer>
+
+    <script>
+        const maxNumberInput = document.getElementById('maxNumber');
+        const resultDisplay = document.getElementById('resultDisplay');
+        const generateBtn = document.getElementById('generateBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        const historyDisplay = document.getElementById('historyDisplay');
+
+        let history = [];
+
+        function validateInput() {
+            const value = parseInt(maxNumberInput.value, 10);
+            if (isNaN(value) || value <= 1) {
+                errorMsg.classList.add('show');
+                return false;
+            }
+            errorMsg.classList.remove('show');
+            return true;
+        }
+
+        function generateRandomNumber() {
+            if (!validateInput()) return;
+
+            const maxNumber = parseInt(maxNumberInput.value, 10);
+            const randomNum = Math.floor(Math.random() * maxNumber) + 1;
+            
+            displayResult(randomNum);
+            addToHistory(randomNum);
+        }
+
+        function displayResult(number) {
+            resultDisplay.textContent = number;
+            resultDisplay.classList.add('animate');
+            setTimeout(() => resultDisplay.classList.remove('animate'), 300);
+        }
+
+        function addToHistory(number) {
+            history.unshift(number);
+            if (history.length > 5) history.pop();
+            updateHistoryDisplay();
+        }
+
+        function updateHistoryDisplay() {
+            if (history.length === 0) {
+                historyDisplay.textContent = '暂无记录';
+                return;
+            }
+            historyDisplay.textContent = history.join(' | ');
+        }
+
+        function resetAll() {
+            maxNumberInput.value = '';
+            resultDisplay.textContent = '?';
+            history = [];
+            updateHistoryDisplay();
+            errorMsg.classList.remove('show');
+        }
+
+        generateBtn.addEventListener('click', generateRandomNumber);
+        resetBtn.addEventListener('click', resetAll);
+        maxNumberInput.addEventListener('input', validateInput);
+        
+        // 初始化历史记录显示
+        updateHistoryDisplay();
+    </script>
+</body>
+</html>
+    
